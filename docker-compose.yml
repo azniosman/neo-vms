@@ -1,0 +1,193 @@
+version: '3.8'
+
+services:
+  # Database
+  database:
+    image: postgres:15-alpine
+    container_name: neo-vms-db
+    environment:
+      POSTGRES_DB: neo_vms
+      POSTGRES_USER: neo_vms_user
+      POSTGRES_PASSWORD: secure_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U neo_vms_user -d neo_vms"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for session storage and caching
+  redis:
+    image: redis:7-alpine
+    container_name: neo-vms-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass redis_password
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: neo-vms-backend
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      HOST: 0.0.0.0
+      
+      # Database
+      DB_DIALECT: postgres
+      DB_HOST: database
+      DB_PORT: 5432
+      DB_NAME: neo_vms
+      DB_USER: neo_vms_user
+      DB_PASSWORD: secure_password
+      
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: redis_password
+      
+      # JWT
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN: 7d
+      
+      # Session
+      SESSION_SECRET: ${SESSION_SECRET}
+      
+      # CSRF
+      CSRF_SECRET: ${CSRF_SECRET}
+      
+      # Email
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM: ${SMTP_FROM}
+      
+      # SMS
+      SMS_API_KEY: ${SMS_API_KEY}
+      SMS_API_SECRET: ${SMS_API_SECRET}
+      SMS_FROM_NUMBER: ${SMS_FROM_NUMBER}
+      
+      # Application
+      APP_NAME: Neo VMS
+      APP_URL: https://localhost
+      FRONTEND_URL: https://localhost
+      
+      # Security
+      BCRYPT_ROUNDS: 12
+      RATE_LIMIT_WINDOW: 15
+      RATE_LIMIT_MAX: 100
+      
+      # PDPA
+      DATA_RETENTION_DAYS: 2555
+      PHOTO_RETENTION_DAYS: 90
+      LOG_RETENTION_DAYS: 2555
+      AUTO_PURGE_ENABLED: true
+      
+      # File uploads
+      MAX_FILE_SIZE: 10485760
+      UPLOAD_PATH: /app/uploads
+      
+      # SSL
+      SSL_CERT_PATH: /app/ssl/cert.pem
+      SSL_KEY_PATH: /app/ssl/key.pem
+      
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+      - ./ssl:/app/ssl
+      - ./backups:/app/backups
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: neo-vms-frontend
+    environment:
+      REACT_APP_API_URL: https://localhost:3001/api
+      REACT_APP_SOCKET_URL: https://localhost:3001
+      REACT_APP_VERSION: 1.0.0
+      REACT_APP_BUILD_DATE: ${BUILD_DATE}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: neo-vms-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+
+  # Backup service
+  backup:
+    build:
+      context: .
+      dockerfile: Dockerfile.backup
+    container_name: neo-vms-backup
+    environment:
+      POSTGRES_HOST: database
+      POSTGRES_DB: neo_vms
+      POSTGRES_USER: neo_vms_user
+      POSTGRES_PASSWORD: secure_password
+      BACKUP_SCHEDULE: "0 2 * * *"
+      BACKUP_RETENTION_DAYS: 30
+    volumes:
+      - ./backups:/backups
+      - ./uploads:/app/uploads:ro
+    depends_on:
+      database:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  default:
+    driver: bridge
