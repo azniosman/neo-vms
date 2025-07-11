@@ -2,7 +2,7 @@ const { Sequelize } = require('sequelize');
 const path = require('path');
 const logger = require('../utils/logger');
 
-// Database configuration
+// Database configuration with latest Sequelize options
 const config = {
   database: process.env.DB_NAME || 'neo_vms',
   username: process.env.DB_USER || 'neo_vms_user',
@@ -17,6 +17,21 @@ const config = {
     min: 0,
     acquire: 30000,
     idle: 10000
+  },
+  dialectOptions: {
+    charset: 'utf8mb4',
+    collate: 'utf8mb4_unicode_ci',
+    useUTC: false,
+    dateStrings: true,
+    typeCast: true
+  },
+  timezone: '+00:00',
+  define: {
+    charset: 'utf8mb4',
+    collate: 'utf8mb4_unicode_ci',
+    underscored: true,
+    freezeTableName: true,
+    timestamps: true
   }
 };
 

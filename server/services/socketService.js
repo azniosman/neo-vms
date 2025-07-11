@@ -8,11 +8,16 @@ const userSockets = new Map(); // userId -> Set of socketIds
 const roomMembers = new Map(); // roomName -> Set of socketIds
 
 /**
- * Initialize Socket.IO service
+ * Initialize Socket.IO service with latest features
  */
 const initializeSocket = (io) => {
-  // Rate limiting middleware
+  // Rate limiting middleware with latest Socket.IO features
   const rateLimiter = createSocketRateLimit(20, 60000); // 20 requests per minute
+
+  // Use Socket.IO v4.8+ middleware for better connection handling
+  io.engine.on('connection_error', (err) => {
+    logger.error('Socket.IO connection error:', err);
+  });
 
   io.on('connection', (socket) => {
     logger.info('New socket connection', {

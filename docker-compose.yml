@@ -1,9 +1,9 @@
-version: '3.8'
+version: '3.9'
 
 services:
   # Database
   database:
-    image: postgres:15-alpine
+    image: postgres:17-alpine
     container_name: neo-vms-db
     environment:
       POSTGRES_DB: ${DB_NAME:-neo_vms}
@@ -26,7 +26,7 @@ services:
 
   # Redis for session storage and caching
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     container_name: neo-vms-redis
     ports:
       - "6379:6379"
@@ -156,7 +156,7 @@ services:
 
   # Nginx reverse proxy
   nginx:
-    image: nginx:alpine
+    image: nginx:1.27-alpine
     container_name: neo-vms-nginx
     ports:
       - "80:80"

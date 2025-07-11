@@ -73,13 +73,22 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false
 }));
 
-// Rate limiting
+// Rate limiting with latest syntax
 const limiter = rateLimit({
   windowMs: (process.env.RATE_LIMIT_WINDOW || 15) * 60 * 1000,
-  max: process.env.RATE_LIMIT_MAX || 100,
-  message: 'Too many requests from this IP, please try again later.',
-  standardHeaders: true,
+  limit: process.env.RATE_LIMIT_MAX || 100,
+  message: {
+    error: 'Too many requests from this IP, please try again later.'
+  },
+  standardHeaders: 'draft-7',
   legacyHeaders: false,
+  handler: (req, res) => {
+    res.status(429).json({
+      error: 'Rate limit exceeded',
+      message: 'Too many requests from this IP, please try again later.',
+      retryAfter: Math.round(req.rateLimit.resetTime / 1000) || 1
+    });
+  }
 });
 
 app.use(limiter);

@@ -165,19 +165,26 @@ const optionalAuth = async (req, res, next) => {
   }
 };
 
-// Rate limiting for authentication endpoints
+// Rate limiting for authentication endpoints with latest syntax
 const authRateLimit = require('express-rate-limit')({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limit each IP to 5 requests per windowMs
+  limit: 5, // limit each IP to 5 requests per windowMs
   message: {
     error: 'Too many authentication attempts',
     message: 'Please try again later'
   },
-  standardHeaders: true,
+  standardHeaders: 'draft-7',
   legacyHeaders: false,
   skip: (req) => {
     // Skip rate limiting for successful requests
     return req.method === 'GET' || (req.user && req.user.isActive);
+  },
+  handler: (req, res) => {
+    res.status(429).json({
+      error: 'Too many authentication attempts',
+      message: 'Please try again later',
+      retryAfter: Math.round(req.rateLimit.resetTime / 1000) || 1
+    });
   }
 });
 

@@ -2,7 +2,12 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react({
+    jsxImportSource: '@emotion/react',
+    babel: {
+      plugins: ['@emotion/babel-plugin']
+    }
+  })],
   server: {
     port: 3000,
     proxy: {
@@ -12,6 +17,7 @@ export default defineConfig({
   build: {
     outDir: 'build',
     sourcemap: true,
+    target: 'es2022',
     rollupOptions: {
       output: {
         manualChunks: {
@@ -24,5 +30,8 @@ export default defineConfig({
   },
   define: {
     'process.env': process.env
+  },
+  optimizeDeps: {
+    include: ['@emotion/react', '@emotion/styled', '@mui/material/Tooltip']
   }
 })

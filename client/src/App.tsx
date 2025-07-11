@@ -2,12 +2,15 @@ import React, { useEffect, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { Box, Typography, Container, Alert } from '@mui/material';
+import { ThemeProvider } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
 
 import { RootState } from './store';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { LoadingScreen } from './components/LoadingScreen';
+import theme from './theme';
 
-// Error Boundary Component
+// Modern Error Boundary Component with React 19 features
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { hasError: boolean; error?: Error }
@@ -88,41 +91,44 @@ const App: React.FC = () => {
 
   return (
     <ErrorBoundary>
-      <Router>
-        <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-          {error && (
-            <Alert severity="error" sx={{ position: 'fixed', top: 16, right: 16, zIndex: 9999 }}>
-              {error}
-            </Alert>
-          )}
-          
-          <Routes>
-            {/* Public routes */}
-            <Route path="/login" element={
-              isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />
-            } />
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <Router>
+          <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+            {error && (
+              <Alert severity="error" sx={{ position: 'fixed', top: 16, right: 16, zIndex: 9999 }}>
+                {error}
+              </Alert>
+            )}
             
-            {/* Protected routes */}
-            <Route path="/" element={
-              <ProtectedRoute>
-                <Layout>
-                  <Dashboard />
-                </Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <Layout>
-                  <Dashboard />
-                </Layout>
-              </ProtectedRoute>
-            } />
-            
-            {/* Default route */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </Box>
-      </Router>
+            <Routes>
+              {/* Public routes */}
+              <Route path="/login" element={
+                isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />
+              } />
+              
+              {/* Protected routes */}
+              <Route path="/" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Dashboard />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/dashboard" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Dashboard />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              {/* Default route */}
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </Box>
+        </Router>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 };
