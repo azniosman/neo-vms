@@ -473,8 +473,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 For support and questions:
 - Create an issue on GitHub
-- Email: support@neo-vms.com
-- Documentation: https://docs.neo-vms.com
+- Email: support@azni.me
 
 ## Roadmap
 
