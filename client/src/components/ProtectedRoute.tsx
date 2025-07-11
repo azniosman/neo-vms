@@ -2,7 +2,7 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
-import { Box, Alert, AlertTitle } from '@mui/material';
+import { Box, Alert } from '@mui/material';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -14,7 +14,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requiredRoles = [],
 }) => {
   const location = useLocation();
-  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+  const isAuthenticated = useSelector((state: RootState) => state.auth?.isAuthenticated) || false;
+  const user = useSelector((state: RootState) => state.auth?.user);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
@@ -24,8 +25,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="error">
-          <AlertTitle>Access Denied</AlertTitle>
-          You don't have permission to access this page. Required roles: {requiredRoles.join(', ')}
+          Access Denied - You don't have permission to access this page. Required roles: {requiredRoles.join(', ')}
         </Alert>
       </Box>
     );

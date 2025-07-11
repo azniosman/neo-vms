@@ -5,8 +5,6 @@ import { PersistGate } from 'redux-persist/integration/react';
 import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 import { SnackbarProvider } from 'notistack';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 
 import App from './App';
 import { store, persistor } from './store';
@@ -24,18 +22,16 @@ root.render(
       <PersistGate loading={<LoadingScreen />} persistor={persistor}>
         <ThemeProvider theme={theme}>
           <CssBaseline />
-          <LocalizationProvider dateAdapter={AdapterDateFns}>
-            <SnackbarProvider
-              maxSnack={3}
-              anchorOrigin={{
-                vertical: 'top',
-                horizontal: 'right',
-              }}
-              preventDuplicate
-            >
-              <App />
-            </SnackbarProvider>
-          </LocalizationProvider>
+          <SnackbarProvider
+            maxSnack={3}
+            anchorOrigin={{
+              vertical: 'top',
+              horizontal: 'right',
+            }}
+            preventDuplicate
+          >
+            <App />
+          </SnackbarProvider>
         </ThemeProvider>
       </PersistGate>
     </Provider>

@@ -10,9 +10,9 @@ const smsConfig = {
 
 // SMS providers
 const providers = {
-  twilio: require('./smsProviders/twilio'),
-  nexmo: require('./smsProviders/nexmo'),
-  'aws-sns': require('./smsProviders/awsSns')
+  twilio: require('./smsProviders/twilio')
+  // nexmo: require('./smsProviders/nexmo'),
+  // 'aws-sns': require('./smsProviders/awsSns')
 };
 
 /**

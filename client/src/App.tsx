@@ -1,98 +1,129 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { Box } from '@mui/material';
+import { Box, Typography, Container, Alert } from '@mui/material';
 
 import { RootState } from './store';
-import { checkAuthStatus } from './store/slices/authSlice';
-import { initializeSocket } from './store/slices/socketSlice';
 import { ProtectedRoute } from './components/ProtectedRoute';
-import { Layout } from './components/Layout';
 import { LoadingScreen } from './components/LoadingScreen';
 
-// Pages
-import Login from './pages/auth/Login';
-import Dashboard from './pages/Dashboard';
-import Visitors from './pages/Visitors';
-import Visits from './pages/Visits';
-import Users from './pages/Users';
-import Reports from './pages/Reports';
-import Settings from './pages/Settings';
-import Profile from './pages/Profile';
-import Emergency from './pages/Emergency';
-import NotFound from './pages/NotFound';
+// Error Boundary Component
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error?: Error }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
 
-// Public pages
-import VisitorPreRegistration from './pages/public/VisitorPreRegistration';
-import VisitorSelfCheckIn from './pages/public/VisitorSelfCheckIn';
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('Error caught by boundary:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Container maxWidth="sm" sx={{ mt: 8 }}>
+          <Alert severity="error" sx={{ mb: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Something went wrong
+            </Typography>
+            <Typography variant="body2">
+              Please refresh the page or contact support if the problem persists.
+            </Typography>
+          </Alert>
+        </Container>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+// Lazy load components for better performance
+const Login = React.lazy(() => import('./components/Login'));
+const Dashboard = React.lazy(() => import('./components/Dashboard'));
+
+// Fallback component for lazy loading
+const LazyFallback = () => (
+  <Container maxWidth="sm" sx={{ mt: 8, textAlign: 'center' }}>
+    <LoadingScreen />
+  </Container>
+);
+
+// Layout component with proper error handling
+const Layout = ({ children }: { children: React.ReactNode }) => (
+  <ErrorBoundary>
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+      <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+        <Suspense fallback={<LazyFallback />}>
+          {children}
+        </Suspense>
+      </Box>
+    </Box>
+  </ErrorBoundary>
+);
 
 const App: React.FC = () => {
   const dispatch = useDispatch();
-  const { isAuthenticated, loading, user } = useSelector((state: RootState) => state.auth);
+  const isAuthenticated = useSelector((state: RootState) => state.auth?.isAuthenticated) || false;
+  const loading = useSelector((state: RootState) => state.auth?.loading) || false;
+  const error = useSelector((state: RootState) => state.auth?.error);
 
+  // Handle authentication errors
   useEffect(() => {
-    dispatch(checkAuthStatus());
-  }, [dispatch]);
-
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      dispatch(initializeSocket());
+    if (error) {
+      console.error('Authentication error:', error);
     }
-  }, [dispatch, isAuthenticated, user]);
+  }, [error]);
 
   if (loading) {
     return <LoadingScreen />;
   }
 
   return (
-    <Router>
-      <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-        <Routes>
-          {/* Public routes */}
-          <Route path="/login" element={
-            isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />
-          } />
-          <Route path="/visitor/pre-register" element={<VisitorPreRegistration />} />
-          <Route path="/visitor/checkin" element={<VisitorSelfCheckIn />} />
+    <ErrorBoundary>
+      <Router>
+        <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+          {error && (
+            <Alert severity="error" sx={{ position: 'fixed', top: 16, right: 16, zIndex: 9999 }}>
+              {error}
+            </Alert>
+          )}
           
-          {/* Protected routes */}
-          <Route path="/" element={
-            <ProtectedRoute>
-              <Layout />
-            </ProtectedRoute>
-          }>
-            <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="visitors" element={<Visitors />} />
-            <Route path="visits" element={<Visits />} />
-            <Route path="users" element={
-              <ProtectedRoute requiredRoles={['admin', 'receptionist']}>
-                <Users />
+          <Routes>
+            {/* Public routes */}
+            <Route path="/login" element={
+              isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />
+            } />
+            
+            {/* Protected routes */}
+            <Route path="/" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Dashboard />
+                </Layout>
               </ProtectedRoute>
             } />
-            <Route path="reports" element={
-              <ProtectedRoute requiredRoles={['admin', 'receptionist', 'security']}>
-                <Reports />
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Dashboard />
+                </Layout>
               </ProtectedRoute>
             } />
-            <Route path="settings" element={
-              <ProtectedRoute requiredRoles={['admin']}>
-                <Settings />
-              </ProtectedRoute>
-            } />
-            <Route path="profile" element={<Profile />} />
-            <Route path="emergency" element={
-              <ProtectedRoute requiredRoles={['admin', 'security']}>
-                <Emergency />
-              </ProtectedRoute>
-            } />
-          </Route>
-          
-          {/* 404 route */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </Box>
-    </Router>
+            
+            {/* Default route */}
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </Box>
+      </Router>
+    </ErrorBoundary>
   );
 };
 

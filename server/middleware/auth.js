@@ -2,8 +2,14 @@ const jwt = require('jsonwebtoken');
 const { User } = require('../models');
 const logger = require('../utils/logger');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'fallback-refresh-secret';
+// SECURITY FIX: Remove hardcoded fallback secrets
+const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
+
+// Validate required environment variables
+if (!JWT_SECRET || !JWT_REFRESH_SECRET) {
+  throw new Error('JWT_SECRET and JWT_REFRESH_SECRET environment variables are required');
+}
 
 // Generate JWT token
 const generateToken = (user) => {

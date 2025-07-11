@@ -1,3 +1,9 @@
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection:', reason);
+});
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -14,6 +20,24 @@ const socketIo = require('socket.io');
 
 // Load environment variables
 require('dotenv').config();
+
+// Add better error handling for missing environment variables
+const requiredEnvVars = [
+  'JWT_SECRET',
+  'JWT_REFRESH_SECRET', 
+  'SESSION_SECRET',
+  'DB_PASSWORD',
+  'REDIS_PASSWORD'
+];
+
+const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+if (missingVars.length > 0) {
+  console.error('❌ Missing required environment variables:', missingVars);
+  console.error('Please check your .env file and ensure all required variables are set.');
+  process.exit(1);
+}
+
+console.log('✅ Environment variables validated');
 
 // Import modules
 const { sequelize } = require('./models');
@@ -73,7 +97,7 @@ app.use(cookieParser());
 
 // Session middleware
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'fallback-secret-key',
+  secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -82,6 +106,11 @@ app.use(session({
     maxAge: 24 * 60 * 60 * 1000 // 24 hours
   }
 }));
+
+// Validate session secret
+if (!process.env.SESSION_SECRET) {
+  throw new Error('SESSION_SECRET environment variable is required');
+}
 
 // CORS middleware
 app.use(cors({
@@ -187,16 +216,23 @@ async function startServer() {
     
     let server;
     
-    if (fs.existsSync(sslCertPath) && fs.existsSync(sslKeyPath)) {
-      const privateKey = fs.readFileSync(sslKeyPath, 'utf8');
-      const certificate = fs.readFileSync(sslCertPath, 'utf8');
-      const credentials = { key: privateKey, cert: certificate };
-      
-      server = https.createServer(credentials, app);
-      logger.info('HTTPS server enabled');
+    // For development, prefer HTTP unless SSL certificates are explicitly configured
+    if (process.env.NODE_ENV === 'production' && fs.existsSync(sslCertPath) && fs.existsSync(sslKeyPath)) {
+      try {
+        const privateKey = fs.readFileSync(sslKeyPath, 'utf8');
+        const certificate = fs.readFileSync(sslCertPath, 'utf8');
+        const credentials = { key: privateKey, cert: certificate };
+        
+        server = https.createServer(credentials, app);
+        logger.info('HTTPS server enabled');
+      } catch (error) {
+        logger.warn('SSL certificate error, falling back to HTTP:', error.message);
+        server = http.createServer(app);
+        logger.info('HTTP server enabled (SSL fallback)');
+      }
     } else {
       server = http.createServer(app);
-      logger.info('HTTP server enabled (no SSL certificates found)');
+      logger.info('HTTP server enabled (development mode)');
     }
     
     // Initialize Socket.IO

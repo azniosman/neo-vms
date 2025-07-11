@@ -37,7 +37,7 @@ export const initializeSocket = createAsyncThunk(
       transports: ['websocket'],
     });
 
-    return new Promise((resolve, reject) => {
+    return new Promise<Socket>((resolve, reject) => {
       socket.on('connect', () => {
         resolve(socket);
       });
@@ -173,7 +173,7 @@ const socketSlice = createSlice({
         state.connectionError = null;
       })
       .addCase(initializeSocket.fulfilled, (state, action) => {
-        state.socket = action.payload as Socket;
+        state.socket = action.payload as any;
         state.connected = true;
         state.connectionError = null;
       })

@@ -1,25 +1,23 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { store } from '../store';
 import { setAccessToken, clearAuth } from '../store/slices/authSlice';
 
 // Create axios instance
 const api: AxiosInstance = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:3001/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   timeout: 30000,
   withCredentials: true,
 });
 
 // Request interceptor
 api.interceptors.request.use(
-  (config: AxiosRequestConfig) => {
+  (config: InternalAxiosRequestConfig) => {
     const state = store.getState();
     const token = state.auth.accessToken;
     
     if (token) {
-      config.headers = {
-        ...config.headers,
-        Authorization: `Bearer ${token}`,
-      };
+      config.headers = config.headers || {};
+      config.headers.Authorization = `Bearer ${token}`;
     }
     
     return config;
